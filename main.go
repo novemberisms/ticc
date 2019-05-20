@@ -9,6 +9,7 @@ func main() {
 	getArguments()
 	// this is deferred from here so even if the program panics, the file will still be closed
 	defer Args.outputFile.Close()
+
 	fmt.Printf("language: %s\n", Args.language)
 	fmt.Printf("dir: %s\n", Args.directory.Name())
 

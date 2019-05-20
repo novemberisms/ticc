@@ -21,6 +21,7 @@ func getArguments() {
 	langFlag := flag.String("l", string(auto), "Which language to use. Args are: lua | wren | moon | auto")
 	dirFlag := flag.String("d", ".", "The directory containing the main file and the subfiles")
 	outFlag := flag.String("o", "out", "The output file (sans extension)")
+
 	// begin parsing the flags
 	flag.Parse()
 
@@ -29,12 +30,13 @@ func getArguments() {
 	_setDir(*dirFlag)
 	_setLanguage(*langFlag)
 	_setOutputFile(*outFlag)
+
 	// this gives all the non-flag command line args
 	Args.positional = flag.Args()
 }
 
 func _setDir(dirname string) {
-
+	// make sure it's actually a directory first
 	stat, err := os.Stat(dirname)
 	checkError(err)
 	if !stat.IsDir() {

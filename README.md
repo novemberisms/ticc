@@ -2,6 +2,16 @@
 
 A command line tool to help writing large and complex games for the TIC-80 fantasy console.
 
+# NOTICE
+
+This is still a work in progress. It doesn't even work yet. Eventually this tool will have the following features:
+
+* Support for all the languages supported in the TIC-80
+* Preprocessor directives
+* Compiler flags
+* Optional source code minification
+* Unit testing suite
+
 # Reason
 
 One of the limitations of the TIC-80 is that if you want to edit with a proper text editor like VSCode or Sublime, all the source code for your game must be in a single file, which must then be imported into the TIC-80. This can get very unmanageable very quickly, and so usually people write these programs that take a bunch of source files and 'stitch' them together into one file. 

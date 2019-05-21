@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/novemberisms/ticc/compiler"
+	"github.com/novemberisms/ticc/wrenparser"
 )
 
 func main() {
@@ -17,6 +20,17 @@ func main() {
 	checkError(err)
 	mainFile, err := os.Open(mainFileName)
 	checkError(err)
+	defer mainFile.Close()
+
+	comp := compiler.NewCompiler(
+		wrenparser.WrenParser{},
+		mainFile,
+		Args.outputFile,
+		Args.directory.Name(),
+	)
+
+	fmt.Print(comp)
+
 	for _, line := range lines(mainFile) {
 		outline := fmt.Sprintf("[%s}\n", line)
 		Args.outputFile.WriteString(outline)

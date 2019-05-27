@@ -1,6 +1,8 @@
 package compiler
 
-import "os"
+import (
+	"os"
+)
 
 // A Parser is one of the language implementations that will read a line of code and determine certain
 // qualities about it
@@ -28,9 +30,20 @@ func NewCompiler(parser Parser, mainfile *os.File, outputfile *os.File, director
 
 // Start starts the compilation process
 func (c Compiler) Start() {
-
 }
 
 func (c Compiler) processFile(file *os.File) {
 
+}
+
+func (c Compiler) write(values ...string) {
+	for _, s := range values {
+		c.outputFile.WriteString(s)
+	}
+}
+
+func (c Compiler) writeLine(lines ...string) {
+	for _, line := range lines {
+		c.outputFile.WriteString(line + "\n")
+	}
 }

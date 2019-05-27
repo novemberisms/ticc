@@ -22,17 +22,21 @@ func main() {
 	checkError(err)
 	defer mainFile.Close()
 
+	var parser compiler.Parser
+
+	switch Args.language {
+	case wren:
+		parser = wrenparser.WrenParser{}
+	default:
+		parser = wrenparser.WrenParser{}
+	}
+
 	comp := compiler.NewCompiler(
-		wrenparser.WrenParser{},
+		parser,
 		mainFile,
 		Args.outputFile,
 		Args.directory.Name(),
 	)
 
-	fmt.Print(comp)
-
-	for _, line := range lines(mainFile) {
-		outline := fmt.Sprintf("[%s}\n", line)
-		Args.outputFile.WriteString(outline)
-	}
+	comp.Start()
 }

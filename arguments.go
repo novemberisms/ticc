@@ -39,6 +39,7 @@ func _setDir(dirname string) {
 	// make sure it's actually a directory first
 	stat, err := os.Stat(dirname)
 	checkError(err)
+
 	if !stat.IsDir() {
 		log.Fatal("The argument to -d must be a directory")
 	}

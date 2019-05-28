@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-
-	"github.com/novemberisms/stack"
 )
 
 // A Parser is one of the language implementations that will read a line of code and determine certain
@@ -20,14 +18,14 @@ type Compiler struct {
 	Parser
 	outputFile *os.File
 	directory  string
-	fileStack  *stack.Stack
+	fileStack  *FileStack
 }
 
 // NewCompiler creates a new compiler with the given parameters
 func NewCompiler(parser Parser, mainfile string, outputfile *os.File, directory string) *Compiler {
 	mainSourceFile := newSourceFile(mainfile)
 
-	fileStack := stack.NewStack(0)
+	fileStack := NewFileStack(0)
 	fileStack.Push(mainSourceFile)
 
 	return &Compiler{
@@ -40,7 +38,7 @@ func NewCompiler(parser Parser, mainfile string, outputfile *os.File, directory 
 
 // Start starts the compilation process
 func (c *Compiler) Start() {
-	main := c.peekSourceFile()
+	main := c.fileStack.Peek()
 	fmt.Println(main.code)
 	c.writeLine(strings.Split(main.code, "\n")...)
 }
@@ -55,10 +53,6 @@ func (c Compiler) writeLine(lines ...string) {
 	for _, line := range lines {
 		c.outputFile.WriteString(line + "\n")
 	}
-}
-
-func (c Compiler) peekSourceFile() *SourceFile {
-	return c.fileStack.Peek().(*SourceFile)
 }
 
 func checkError(err error) {

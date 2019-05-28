@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -33,15 +31,4 @@ func findMainFile(dirname string) (string, error) {
 		}
 	}
 	return "", errors.New("No main file found")
-}
-
-// lines will divide a file's contents up into lines and put them into a slice
-func lines(file *os.File) []string {
-	// set the capacity to 32 lines
-	result := make([]string, 0, 32)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		result = append(result, scanner.Text())
-	}
-	return result
 }

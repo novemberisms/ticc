@@ -2,26 +2,27 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/novemberisms/ticc/compiler"
 	"github.com/novemberisms/ticc/wrenparser"
 )
 
 func main() {
+	// populate the Args global var with the proper command line args
 	getArguments()
-	// this is deferred from here so even if the program panics, the file will still be closed
 	defer Args.outputFile.Close()
 
+	fmt.Printf("===================TICC=====================\n")
 	fmt.Printf("language: %s\n", Args.language)
 	fmt.Printf("dir: %s\n", Args.directory.Name())
+	fmt.Printf("out: %s\n", Args.outputFile.Name())
+	fmt.Printf("============================================\n")
 
-	mainFileName, err := findMainFile(Args.directory.Name())
+	// get the name of the main file so we can pass it into the compiler
+	mainFile, err := findMainFile(Args.directory.Name())
 	checkError(err)
-	mainFile, err := os.Open(mainFileName)
-	checkError(err)
-	defer mainFile.Close()
 
+	// select a parser based on the supplied language
 	var parser compiler.Parser
 
 	switch Args.language {
@@ -31,6 +32,7 @@ func main() {
 		parser = wrenparser.WrenParser{}
 	}
 
+	// create the compiler struct
 	comp := compiler.NewCompiler(
 		parser,
 		mainFile,

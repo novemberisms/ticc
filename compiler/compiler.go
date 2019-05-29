@@ -10,7 +10,8 @@ import (
 // A Parser is one of the language implementations that will read a line of code and determine certain
 // qualities about it based on unique properties of the language itself
 type Parser interface {
-	IsLineImport(line string) bool
+	IsLineImport(line string) bool       // whether a given line is an import directive in the language
+	StripUnimportant(line string) string // remove all unnecessary whitespace and any comments
 }
 
 // Compiler is the central control struct that reads input files and stitches them together into the output file

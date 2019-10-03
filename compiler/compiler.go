@@ -3,7 +3,6 @@ package compiler
 import (
 	"log"
 	"os"
-	"strings"
 )
 
 // A LangService is one of the language implementations that will read a line of code and determine certain
@@ -41,10 +40,9 @@ func NewCompiler(langservice LangService, mainfile string, outputfile *os.File, 
 }
 
 // Start starts the compilation process
-func (c Compiler) Start() {
-	main := c.fileStack.Peek()
-
-	c.writeLine(strings.Split(main.code, "\n")...)
+func (c *Compiler) Start() {
+	mainFile := c.fileStack.Peek()
+	c.processFile(*mainFile)
 }
 
 func (c Compiler) write(values ...string) {
@@ -59,12 +57,14 @@ func (c Compiler) writeLine(lines ...string) {
 	}
 }
 
-func (c Compiler) processFile(sourcefile SourceFile) {
+func (c *Compiler) processFile(sourcefile SourceFile) {
 	for _, line := range sourcefile.Lines() {
 		langService := c.LangService
 		leanLine := langService.StripUnimportant(line)
 		if langService.IsLineImport(leanLine) {
 			importedSymbols, requirePath := langService.GetImportData(leanLine)
+			c.fileStack.Push(NewSourceFile(requirePath))
+
 		} else {
 			c.writeLine(leanLine)
 		}

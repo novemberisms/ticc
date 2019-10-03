@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/novemberisms/ticc/compiler"
-	"github.com/novemberisms/ticc/wrenparser"
+	"github.com/novemberisms/ticc/moonlang"
 )
 
 func main() {
@@ -22,19 +23,19 @@ func main() {
 	mainFile, err := findMainFile(Args.directory.Name())
 	checkError(err)
 
-	// select a parser based on the supplied language
-	var parser compiler.Parser
+	// select a langserver based on the supplied language
+	var langService compiler.LangService
 
 	switch Args.language {
-	case wren:
-		parser = wrenparser.WrenParser{}
+	case moon:
+		langService = moonlang.MoonscriptLanguageService{}
 	default:
-		parser = wrenparser.WrenParser{}
+		log.Fatalln("Language not yet implemented")
 	}
 
 	// create the compiler struct
 	comp := compiler.NewCompiler(
-		parser,
+		langService,
 		mainFile,
 		Args.outputFile,
 		Args.directory.Name(),

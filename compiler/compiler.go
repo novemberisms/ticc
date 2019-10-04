@@ -26,7 +26,7 @@ type Compiler struct {
 
 // NewCompiler creates a new compiler with the given parameters
 func NewCompiler(langservice LangService, mainfile string, outputfile *os.File, directory string) *Compiler {
-	mainSourceFile := NewSourceFile(mainfile)
+	mainSourceFile := newSourceFile(mainfile)
 
 	fileStack := NewFileStack(1)
 	fileStack.Push(mainSourceFile)
@@ -41,8 +41,7 @@ func NewCompiler(langservice LangService, mainfile string, outputfile *os.File, 
 
 // Start starts the compilation process
 func (c *Compiler) Start() {
-	mainFile := c.fileStack.Peek()
-	c.processFile(*mainFile)
+	c.processFile()
 }
 
 func (c Compiler) write(values ...string) {
@@ -57,13 +56,15 @@ func (c Compiler) writeLine(lines ...string) {
 	}
 }
 
-func (c *Compiler) processFile(sourcefile SourceFile) {
-	for _, line := range sourcefile.Lines() {
+func (c *Compiler) processFile() {
+	currentFile := c.fileStack.Peek()
+	for _, line := range currentFile.lines() {
 		langService := c.LangService
 		leanLine := langService.StripUnimportant(line)
 		if langService.IsLineImport(leanLine) {
 			importedSymbols, requirePath := langService.GetImportData(leanLine)
-			c.fileStack.Push(NewSourceFile(requirePath))
+			requiredFile := newSourceFile(requirePath)
+			c.fileStack.Push(requiredFile)
 
 		} else {
 			c.writeLine(leanLine)

@@ -13,8 +13,8 @@ type SourceFile struct {
 	importedSymbols []string
 }
 
-// NewSourceFile creates a new sourcefile from the filepath
-func NewSourceFile(filepath string) *SourceFile {
+// newSourceFile creates a new sourcefile from the filepath
+func newSourceFile(filepath string) *SourceFile {
 	// get the code
 	codeBytes, err := ioutil.ReadFile(filepath)
 	checkError(err)
@@ -28,7 +28,17 @@ func NewSourceFile(filepath string) *SourceFile {
 	}
 }
 
-// Lines returns an array comprised of all the lines in the sourcefile's code
-func (s *SourceFile) Lines() []string {
+// lines returns an array comprised of all the lines in the sourcefile's code
+func (s *SourceFile) lines() []string {
 	return strings.Split(s.code, "\n")
+}
+
+// addImportedSymbols appends the given symbols to the sourcefile's slice of imported symbols
+func (s *SourceFile) addImportedSymbols(symbols []string) {
+	s.importedSymbols = append(s.importedSymbols, symbols...)
+}
+
+// addExportedSymbols appends the given symbols to the sourcefile's slice of exported symbols
+func (s *SourceFile) addExportedSymbols(symbols []string) {
+	s.exportedSymbols = append(s.exportedSymbols, symbols...)
 }

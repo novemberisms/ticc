@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"path"
 	"path/filepath"
@@ -12,7 +11,7 @@ import (
 // checkError checks if the error exists, and if so, outputs it to stdout and panics
 func checkError(err error) {
 	if err != nil {
-		fmt.Print(err)
+		// fmt.Print(err)
 		panic(err)
 	}
 }
@@ -30,5 +29,5 @@ func findMainFile(dirname string) (string, error) {
 			return path.Join(dirname, base), nil
 		}
 	}
-	return "", errors.New("No main file found")
+	return "", errors.New("no main file found")
 }

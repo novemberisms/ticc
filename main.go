@@ -1,14 +1,21 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"log"
 
 	"github.com/novemberisms/ticc/compiler"
 	"github.com/novemberisms/ticc/moonlang"
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+			return
+		}
+	}()
+
 	// populate the Args global var with the proper command line args
 	getArguments()
 	defer Args.outputFile.Close()
@@ -30,7 +37,7 @@ func main() {
 	case moon:
 		langService = moonlang.MoonscriptLanguageService{}
 	default:
-		log.Fatalln("Language not yet implemented")
+		checkError(errors.New("language not yet implemented"))
 	}
 
 	// create the compiler struct

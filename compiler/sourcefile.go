@@ -7,6 +7,7 @@ import (
 
 // A SourceFile is a representation of a single source file in any of the supported languages
 type SourceFile struct {
+	path            string
 	code            string
 	dependencies    []SourceFile
 	exportedSymbols []string
@@ -14,18 +15,23 @@ type SourceFile struct {
 }
 
 // newSourceFile creates a new sourcefile from the filepath
-func newSourceFile(filepath string) *SourceFile {
+func newSourceFile(filepath string) (*SourceFile, error) {
 	// get the code
 	codeBytes, err := ioutil.ReadFile(filepath)
-	checkError(err)
+
+	if err != nil {
+		return nil, err
+	}
+
 	code := string(codeBytes)
 
 	return &SourceFile{
+		path:            filepath,
 		code:            code,
 		dependencies:    make([]SourceFile, 0),
 		exportedSymbols: make([]string, 0),
 		importedSymbols: make([]string, 0),
-	}
+	}, nil
 }
 
 // lines returns an array comprised of all the lines in the sourcefile's code

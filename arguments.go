@@ -1,8 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
-	"log"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -41,7 +42,7 @@ func _setDir(dirname string) {
 	checkError(err)
 
 	if !stat.IsDir() {
-		log.Fatal("The argument to -d must be a directory")
+		checkError(errors.New("the argument to -d must be a directory"))
 	}
 
 	Args.directory = stat
@@ -60,7 +61,7 @@ func _setLanguage(rawInput string) {
 	}
 
 	if !isSupportedLanguage(Args.language) {
-		log.Fatalf("Invalid language detected (%s) Supported: lua | moon | wren", Args.language)
+		checkError(fmt.Errorf("invalid language detected (%s) the supported languages are: lua | moon | wren", Args.language))
 	}
 }
 
@@ -72,14 +73,18 @@ func _setOutputFile(filename string) {
 		// auto fix
 		filename += "." + string(Args.language)
 	} else if ext != string(Args.language) {
-		log.Fatal("The output file must have the same extension as the detected language. Alternatively, you may omit the extension and it will automatically be detected")
+		checkError(
+			errors.New(
+				`The output file must have the same extension as the detected language. 
+				Alternatively, you may omit the extension and it will automatically be detected`,
+			),
+		)
 	}
 	// check to see if the output file already exists, and if so, delete it
 	_deleteIfExists(filename)
 	file, err := os.Create(filename)
 	checkError(err)
 	Args.outputFile = file
-
 }
 
 func _deleteIfExists(filename string) {

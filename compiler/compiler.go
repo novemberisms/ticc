@@ -16,6 +16,10 @@ type LangService interface {
 	StripUnimportant(line string) string
 	// given a line, fetch a list of imported symbols and the relative path of the file to import them from (with extension)
 	GetImportData(line string) ([]string, string, error)
+	// whether a given line declares a new export for the file
+	IsExportDeclaration(line string) bool
+	// fetch a list of exported symbols for a given line, assuming it really is an export declaration
+	GetExportDeclarations(line string) []string
 }
 
 // Compiler is the central control struct that reads input files and stitches them together into the output file
@@ -24,7 +28,7 @@ type Compiler struct {
 	outputFile           *os.File
 	directory            string
 	fileStack            *FileStack
-	alreadyImportedFiles map[string]bool
+	alreadyImportedFiles map[string]SourceFile
 }
 
 // NewCompiler creates a new compiler with the given parameters
@@ -45,38 +49,43 @@ func NewCompiler(
 		outputfile,
 		directory,
 		fileStack,
-		make(map[string]bool),
+		make(map[string]SourceFile),
 	}
 }
 
 // Start starts the compilation process
 func (c *Compiler) Start() {
-	err := c.processFile()
+	err := c._processFile()
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 }
 
-func (c Compiler) write(values ...string) {
+func (c Compiler) _write(values ...string) {
 	for _, s := range values {
 		c.outputFile.WriteString(s)
 	}
 }
 
-func (c Compiler) writeLine(lines ...string) {
+func (c Compiler) _writeLine(lines ...string) {
 	for _, line := range lines {
 		c.outputFile.WriteString(line + "\n")
 	}
 }
 
-func (c *Compiler) pushFile(sourcefile *SourceFile) {
+func (c *Compiler) _pushFile(sourcefile *SourceFile) {
 	c.fileStack.Push(sourcefile)
-	if !c.alreadyImportedFiles[sourcefile.path] {
-		c.alreadyImportedFiles[sourcefile.path] = true
-	}
+	c.alreadyImportedFiles[sourcefile.path] = *sourcefile
 }
 
-func (c *Compiler) processFile() error {
+// TODO: make use of this and caching of the already imported files to crosscheck exports and imports to make sure they match
+// when importing a file
+func (c Compiler) _shouldProcessNewFile(path string) bool {
+	_, exists := c.alreadyImportedFiles[path]
+	return !exists
+}
+
+func (c *Compiler) _processFile() error {
 	currentFile := c.fileStack.Peek()
 
 	for lineNumber, line := range currentFile.lines() {
@@ -107,6 +116,11 @@ func (c *Compiler) processFile() error {
 
 			requirePath := path.Join(c.directory, partialRequirePath)
 
+			if !c._shouldProcessNewFile(requirePath) {
+				// skip files that were already imported earlier in the program
+				continue
+			}
+
 			requiredFile, err := newSourceFile(requirePath)
 
 			if err != nil {
@@ -115,14 +129,22 @@ func (c *Compiler) processFile() error {
 
 			c.fileStack.Push(requiredFile)
 
-			err = c.processFile()
+			err = c._processFile()
 
 			if err != nil {
 				return err
 			}
 
+		} else if langService.IsExportDeclaration(leanLine) {
+
+			exportedSymbols := langService.GetExportDeclarations(leanLine)
+
+			currentFile.addExportedSymbols(exportedSymbols)
+
+			c._writeLine(leanLine)
+
 		} else {
-			c.writeLine(leanLine)
+			c._writeLine(leanLine)
 		}
 	}
 

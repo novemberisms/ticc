@@ -2,3 +2,4 @@ out.*
 test_program
 ticc.*
 .gometalinter-*
+*.sh

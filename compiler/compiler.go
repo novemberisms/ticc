@@ -28,7 +28,7 @@ type Compiler struct {
 	outputFile           *os.File
 	directory            string
 	fileStack            *FileStack
-	alreadyImportedFiles map[string]SourceFile
+	alreadyImportedFiles map[string]*SourceFile
 }
 
 // NewCompiler creates a new compiler with the given parameters
@@ -49,7 +49,7 @@ func NewCompiler(
 		outputfile,
 		directory,
 		fileStack,
-		make(map[string]SourceFile),
+		make(map[string]*SourceFile),
 	}
 }
 
@@ -75,7 +75,12 @@ func (c Compiler) _writeLine(lines ...string) {
 
 func (c *Compiler) _pushFile(sourcefile *SourceFile) {
 	c.fileStack.Push(sourcefile)
-	c.alreadyImportedFiles[sourcefile.path] = *sourcefile
+	c.alreadyImportedFiles[sourcefile.path] = sourcefile
+}
+
+func (c *Compiler) _popFile() *SourceFile {
+	file := c.fileStack.Pop()
+	return file
 }
 
 // TODO: make use of this and caching of the already imported files to crosscheck exports and imports to make sure they match
@@ -85,10 +90,15 @@ func (c Compiler) _shouldProcessNewFile(path string) bool {
 	return !exists
 }
 
+func (c *Compiler) _getCachedFile(path string) *SourceFile {
+	return c.alreadyImportedFiles[path]
+}
+
 func (c *Compiler) _processFile() error {
 	currentFile := c.fileStack.Peek()
 
-	for lineNumber, line := range currentFile.lines() {
+	for i, line := range currentFile.lines() {
+		lineNumber := i + 1
 		langService := c.LangService
 
 		// TODO: make an exception for the prelude in the main file
@@ -100,53 +110,81 @@ func (c *Compiler) _processFile() error {
 		}
 
 		if langService.IsLineImport(leanLine) {
-
-			importedSymbols, partialRequirePath, err := langService.GetImportData(leanLine)
-
+			err := c._handleImport(leanLine, lineNumber, currentFile)
 			if err != nil {
-				return fmt.Errorf(
-					"Error processing file %s (line %d): %w",
-					currentFile.path,
-					lineNumber,
-					err,
-				)
+				return fmt.Errorf("Error processing file '%s' (line %d):\n%w", currentFile.path, lineNumber, err)
 			}
+			continue
+		}
 
-			currentFile.addImportedSymbols(importedSymbols)
+		// if control reaches here, then it the current line is
+		// just a normal line that should be copied into the output
 
-			requirePath := path.Join(c.directory, partialRequirePath)
-
-			if !c._shouldProcessNewFile(requirePath) {
-				// skip files that were already imported earlier in the program
-				continue
-			}
-
-			requiredFile, err := newSourceFile(requirePath)
-
-			if err != nil {
-				return fmt.Errorf("Error trying to import file '%s': %w", requirePath, err)
-			}
-
-			c.fileStack.Push(requiredFile)
-
-			err = c._processFile()
-
-			if err != nil {
-				return err
-			}
-
-		} else if langService.IsExportDeclaration(leanLine) {
-
+		if langService.IsExportDeclaration(leanLine) {
 			exportedSymbols := langService.GetExportDeclarations(leanLine)
-
 			currentFile.addExportedSymbols(exportedSymbols)
+		}
 
-			c._writeLine(leanLine)
+		c._writeLine(leanLine)
+	}
 
-		} else {
-			c._writeLine(leanLine)
+	return nil
+}
+
+func (c *Compiler) _handleImport(line string, lineNumber int, currentFile *SourceFile) error {
+	importedSymbols, partialRequirePath, err := c.LangService.GetImportData(line)
+
+	if err != nil {
+		return err
+	}
+
+	currentFile.addImportedSymbols(importedSymbols)
+
+	requirePath := path.Join(c.directory, partialRequirePath)
+
+	if c._shouldProcessNewFile(requirePath) {
+		requiredFile, err := newSourceFile(requirePath)
+		if err != nil {
+			return fmt.Errorf("Error trying to import file '%s':\n%w", requirePath, err)
+		}
+
+		c._pushFile(requiredFile)
+		err = c._processFile()
+		if err != nil {
+			return err
+		}
+		poppedRequiredFile := c._popFile()
+
+		err = _validateImportExportSymbols(importedSymbols, poppedRequiredFile)
+		if err != nil {
+			return fmt.Errorf("Error trying to import file '%s':\n%w", requirePath, err)
+		}
+	} else {
+		requiredFile := c._getCachedFile(requirePath)
+		err := _validateImportExportSymbols(importedSymbols, requiredFile)
+		if err != nil {
+			return fmt.Errorf("Error trying to import file '%s':\n%w", requirePath, err)
 		}
 	}
 
+	return nil
+}
+
+func _validateImportExportSymbols(importedSymbols []string, requiredFile *SourceFile) error {
+
+	for _, symbol := range importedSymbols {
+		found := false
+		// find the symbol in the file's exported symbols
+		for _, exported := range requiredFile.exportedSymbols {
+			if symbol == exported {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("file does not export symbol '%s'", symbol)
+		}
+	}
 	return nil
 }

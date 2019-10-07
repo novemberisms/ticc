@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"io/ioutil"
 	"strings"
 )
@@ -47,4 +48,14 @@ func (s *SourceFile) addImportedSymbols(symbols []string) {
 // addExportedSymbols appends the given symbols to the sourcefile's slice of exported symbols
 func (s *SourceFile) addExportedSymbols(symbols []string) {
 	s.exportedSymbols = append(s.exportedSymbols, symbols...)
+}
+
+func (s *SourceFile) toString() string {
+	return fmt.Sprintf(
+		"&SourceFile{\n\tpath:%q\n\tdependencies:%q\n\texportedSymbols:%q\n\timportedSymbols:%q\n}",
+		s.path,
+		s.dependencies,
+		s.exportedSymbols,
+		s.importedSymbols,
+	)
 }

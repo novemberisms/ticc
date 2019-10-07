@@ -39,6 +39,10 @@ var reGetMacroType = regexp.MustCompile(`--#\s*(\w+)`)
 var reGetMacroArgs = regexp.MustCompile(`--#\s*\w+\s+(.*)$`)
 var reBreakDownMacroArgs = regexp.MustCompile(`\S+`)
 
+// the first \w+ is the --# STRING text. The first capturing group gets the string name,
+// and the second capturing group gets the string contents
+var reGetMacroStringDeclarationArgs = regexp.MustCompile(`--#\s*\w+\s+(\w+)\s+(.*)$`)
+
 var reIdentifiers = regexp.MustCompile(`[\w_]+`)
 
 // StripUnimportant returns a new line which is the result of stripping all the unimportant or non-usable
@@ -120,6 +124,12 @@ func (ls MoonscriptLanguageService) GetExportDeclarations(line string) []string 
 	return []string{}
 }
 
+// ExtractPrelude extracts a string from the supplied main file code. This string is the prelude-
+// a set of comments that must appear at the top of a file used by the TIC-80 to determine the title,
+// author, description, language, and input type of the game.
+//
+// Normally, comments are stripped out by
+// StripUnimportant, which is why this needs to be its own separate method
 func (ls MoonscriptLanguageService) ExtractPrelude(mainFileCode string) string {
 	result := ""
 	// split the code into lines
@@ -134,6 +144,9 @@ func (ls MoonscriptLanguageService) ExtractPrelude(mainFileCode string) string {
 	return result
 }
 
+// SubstituteDefines takes in a line of code and the current set of previously-declared defines. It then
+// detects any occurences of the defines that should be replaced and returns a string with these occurences
+// replaced by their correct definitions.
 func (ls MoonscriptLanguageService) SubstituteDefines(line string, defines map[string]string) string {
 	return reIdentifiers.ReplaceAllStringFunc(line, func(identifier string) string {
 		replacement, isDefined := defines[identifier]
@@ -144,11 +157,14 @@ func (ls MoonscriptLanguageService) SubstituteDefines(line string, defines map[s
 	})
 }
 
+// IsLineMacro determines if the given line constitutes a macro declaration of some sort
 func (ls MoonscriptLanguageService) IsLineMacro(line string) bool {
 	matches, _ := regexp.MatchString(`^\s*--#`, line)
 	return matches
 }
 
+// GetMacroType will determine what type of macro a given line is, provided that it has been
+// detected previously by IsLineMacro.
 func (ls MoonscriptLanguageService) GetMacroType(line string) compiler.MacroType {
 	matchInfo := reGetMacroType.FindStringSubmatch(line)
 
@@ -157,6 +173,8 @@ func (ls MoonscriptLanguageService) GetMacroType(line string) compiler.MacroType
 	switch strings.ToUpper(symbol) {
 	case "DEFINE":
 		return compiler.MacroTypeDefine
+	case "STRING":
+		return compiler.MacroTypeString
 	case "IF":
 		return compiler.MacroTypeIf
 	case "ELSEIF":
@@ -168,6 +186,8 @@ func (ls MoonscriptLanguageService) GetMacroType(line string) compiler.MacroType
 	}
 }
 
+// GetMacroArgs will return a slice of all the space-separated values that follow a
+// macro definition
 func (ls MoonscriptLanguageService) GetMacroArgs(line string) []string {
 	matchInfo := reGetMacroArgs.FindStringSubmatch(line)
 
@@ -178,4 +198,17 @@ func (ls MoonscriptLanguageService) GetMacroArgs(line string) []string {
 	fullArgs := matchInfo[1]
 
 	return reBreakDownMacroArgs.FindAllString(fullArgs, -1)
+}
+
+func (ls MoonscriptLanguageService) GetMacroStringDeclaration(line string) (string, string, error) {
+	matchInfo := reGetMacroStringDeclarationArgs.FindStringSubmatch(line)
+
+	// the first string in matchInfo is always the full matched text
+	// the second string is the string name
+	// the third string is the string contents
+	if len(matchInfo) != 3 {
+		return "", "", errors.New("invalid format for string macro. must be --#string [STRING_NAME] STRING CONTENTS")
+	}
+
+	return matchInfo[1], matchInfo[2], nil
 }

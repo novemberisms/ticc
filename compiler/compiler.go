@@ -26,6 +26,7 @@ type LangService interface {
 	IsLineMacro(line string) bool
 	GetMacroType(line string) MacroType
 	GetMacroArgs(line string) []string
+	GetMacroStringDeclaration(line string) (string, string, error)
 
 	SubstituteDefines(line string, defines map[string]string) string
 }
@@ -131,7 +132,9 @@ func (c *Compiler) _processFile() error {
 		}
 
 		line = langService.StripUnimportant(line)
-
+		// NOTE that it is important that we substitute the defines AFTER we strip the unimportant spaces.
+		// This allows us to easily preserve any player-facing strings from mangling by putting them in a
+		// #string define
 		line = langService.SubstituteDefines(line, c.defines)
 
 		// completely empty strings should be ignored

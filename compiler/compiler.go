@@ -20,6 +20,14 @@ type LangService interface {
 	IsExportDeclaration(line string) bool
 	// fetch a list of exported symbols for a given line, assuming it really is an export declaration
 	GetExportDeclarations(line string) []string
+	// extract the prelude from the main file
+	ExtractPrelude(mainFileCode string) string
+
+	IsLineMacro(line string) bool
+	GetMacroType(line string) MacroType
+	GetMacroArgs(line string) []string
+
+	SubstituteDefines(line string, defines map[string]string) string
 }
 
 // Compiler is the central control struct that reads input files and stitches them together into the output file
@@ -29,6 +37,7 @@ type Compiler struct {
 	directory            string
 	fileStack            *FileStack
 	alreadyImportedFiles map[string]*SourceFile
+	defines              map[string]string
 }
 
 // NewCompiler creates a new compiler with the given parameters
@@ -50,11 +59,13 @@ func NewCompiler(
 		directory,
 		fileStack,
 		make(map[string]*SourceFile),
+		make(map[string]string),
 	}
 }
 
 // Start starts the compilation process
 func (c *Compiler) Start() {
+	c._writePrelude()
 	err := c._processFile()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -94,6 +105,14 @@ func (c *Compiler) _getCachedFile(path string) *SourceFile {
 	return c.alreadyImportedFiles[path]
 }
 
+func (c *Compiler) _writePrelude() error {
+	mainFile := c.fileStack.Peek()
+	prelude := c.LangService.ExtractPrelude(mainFile.code)
+
+	c._write(prelude)
+	return nil
+}
+
 func (c *Compiler) _processFile() error {
 	currentFile := c.fileStack.Peek()
 
@@ -101,16 +120,27 @@ func (c *Compiler) _processFile() error {
 		lineNumber := i + 1
 		langService := c.LangService
 
-		// TODO: make an exception for the prelude in the main file
-		leanLine := langService.StripUnimportant(line)
-
-		// completely empty strings should be ignored
-		if len(strings.TrimSpace(leanLine)) == 0 {
+		// check if the line is a macro
+		if langService.IsLineMacro(line) {
+			macroType := langService.GetMacroType(line)
+			err := c.handleMacro(macroType, line)
+			if err != nil {
+				return fmt.Errorf("Error processing file '%s' (line %d):\n%w", currentFile.path, lineNumber, err)
+			}
 			continue
 		}
 
-		if langService.IsLineImport(leanLine) {
-			err := c._handleImport(leanLine, lineNumber, currentFile)
+		line = langService.StripUnimportant(line)
+
+		line = langService.SubstituteDefines(line, c.defines)
+
+		// completely empty strings should be ignored
+		if len(strings.TrimSpace(line)) == 0 {
+			continue
+		}
+
+		if langService.IsLineImport(line) {
+			err := c._handleImport(line, lineNumber, currentFile)
 			if err != nil {
 				return fmt.Errorf("Error processing file '%s' (line %d):\n%w", currentFile.path, lineNumber, err)
 			}
@@ -120,12 +150,12 @@ func (c *Compiler) _processFile() error {
 		// if control reaches here, then it the current line is
 		// just a normal line that should be copied into the output
 
-		if langService.IsExportDeclaration(leanLine) {
-			exportedSymbols := langService.GetExportDeclarations(leanLine)
+		if langService.IsExportDeclaration(line) {
+			exportedSymbols := langService.GetExportDeclarations(line)
 			currentFile.addExportedSymbols(exportedSymbols)
 		}
 
-		c._writeLine(leanLine)
+		c._writeLine(line)
 	}
 
 	return nil

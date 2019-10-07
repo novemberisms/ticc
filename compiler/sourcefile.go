@@ -10,7 +10,6 @@ import (
 type SourceFile struct {
 	path            string
 	code            string
-	dependencies    []SourceFile
 	exportedSymbols []string
 	importedSymbols []string
 }
@@ -29,7 +28,6 @@ func newSourceFile(filepath string) (*SourceFile, error) {
 	return &SourceFile{
 		path:            filepath,
 		code:            code,
-		dependencies:    make([]SourceFile, 0),
 		exportedSymbols: make([]string, 0),
 		importedSymbols: make([]string, 0),
 	}, nil
@@ -52,9 +50,8 @@ func (s *SourceFile) addExportedSymbols(symbols []string) {
 
 func (s *SourceFile) toString() string {
 	return fmt.Sprintf(
-		"&SourceFile{\n\tpath:%q\n\tdependencies:%q\n\texportedSymbols:%q\n\timportedSymbols:%q\n}",
+		"&SourceFile{\n\tpath:%q\n\texportedSymbols:%q\n\timportedSymbols:%q\n}",
 		s.path,
-		s.dependencies,
 		s.exportedSymbols,
 		s.importedSymbols,
 	)

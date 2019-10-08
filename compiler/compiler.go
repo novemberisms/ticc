@@ -45,7 +45,7 @@ type Compiler struct {
 func NewCompiler(
 	langservice LangService,
 	mainfile string,
-	outputfile *os.File,
+	outputfilename string,
 	directory string,
 ) *Compiler {
 	// the main file is guaranteed to exist
@@ -54,9 +54,11 @@ func NewCompiler(
 	fileStack := NewFileStack(1)
 	fileStack.Push(mainSourceFile)
 
+	outputFile, _ := os.Create(outputfilename)
+
 	return &Compiler{
 		langservice,
-		outputfile,
+		outputFile,
 		directory,
 		fileStack,
 		make(map[string]*SourceFile),
@@ -65,12 +67,18 @@ func NewCompiler(
 }
 
 // Start starts the compilation process
-func (c *Compiler) Start() {
-	c._writePrelude()
-	err := c._processFile()
-	if err != nil {
-		fmt.Println(err.Error())
+func (c *Compiler) Start() error {
+	defer func() {
+		c.outputFile.Close()
+		c.outputFile = nil
+	}()
+	if err := c._writePrelude(); err != nil {
+		return err
 	}
+	if err := c._processFile(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c Compiler) _write(values ...string) {
@@ -204,7 +212,6 @@ func (c *Compiler) _handleImport(line string, lineNumber int, currentFile *Sourc
 }
 
 func _validateImportExportSymbols(importedSymbols []string, requiredFile *SourceFile) error {
-
 	for _, symbol := range importedSymbols {
 		found := false
 		// find the symbol in the file's exported symbols

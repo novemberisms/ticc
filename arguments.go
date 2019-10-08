@@ -13,7 +13,8 @@ var Args struct {
 	language   Language
 	directory  os.FileInfo
 	positional []string
-	outputFile *os.File
+	outputFile string
+	watchMode  bool
 }
 
 // Must be called as soon as the program starts to initialize Args
@@ -22,6 +23,7 @@ func getArguments() {
 	langFlag := flag.String("l", string(auto), "Which language to use. Args are: lua | wren | moon | auto")
 	dirFlag := flag.String("d", ".", "The directory containing the main file and the subfiles")
 	outFlag := flag.String("o", "out", "The output file (sans extension)")
+	watchFlag := flag.Bool("w", false, "Whether to enable Watch mode, which automatically recompiles if a file has changed in the directory")
 
 	// begin parsing the flags
 	flag.Parse()
@@ -31,6 +33,8 @@ func getArguments() {
 	_setDir(*dirFlag)
 	_setLanguage(*langFlag)
 	_setOutputFile(*outFlag)
+
+	Args.watchMode = *watchFlag
 
 	// this gives all the non-flag command line args
 	Args.positional = flag.Args()
@@ -82,9 +86,7 @@ func _setOutputFile(filename string) {
 	}
 	// check to see if the output file already exists, and if so, delete it
 	_deleteIfExists(filename)
-	file, err := os.Create(filename)
-	checkError(err)
-	Args.outputFile = file
+	Args.outputFile = filename
 }
 
 func _deleteIfExists(filename string) {

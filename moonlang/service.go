@@ -63,17 +63,18 @@ func (ls MoonscriptLanguageService) IsLineImport(line string) bool {
 // a line of code with an import statement
 func (ls MoonscriptLanguageService) GetImportData(line string) ([]string, string, error) {
 
-	// check if the line is a bare require without any imports (like 'require "defines"')
-	if requiredFile := reRequireFile.FindStringSubmatch(line); len(requiredFile) > 0 {
-		return []string{}, requiredFile[1] + ".moon", nil
-	}
-
 	matchInfo := reImportExtract.FindStringSubmatch(line)
 
 	if len(matchInfo) != 3 {
 		// this means the line does not match the template
 		// import <symbols> from require "<path>"
-		return nil, "", errors.New(`import line does not match the template: 'import {symbols} from require "{importpath}"'`)
+
+		// check if the line is a bare require without any imports (like 'require "defines"')
+		if requiredFile := reRequireFile.FindStringSubmatch(line); len(requiredFile) > 0 {
+			return []string{}, requiredFile[1] + ".moon", nil
+		}
+
+		return nil, "", errors.New(`import line does not match the templates: 'import {symbols} from require "{importpath}"' or 'require {importpath}'`)
 	}
 
 	importSymbols := reExtractImportSymbols.FindAllString(matchInfo[1], -1)

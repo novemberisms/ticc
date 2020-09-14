@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/novemberisms/stack"
 )
 
 // A LangService is one of the language implementations that will read a line of code and determine certain
@@ -15,7 +17,7 @@ type LangService interface {
 	// remove all unnecessary whitespace and any comments
 	StripUnimportant(line string) string
 	// given a line, fetch a list of imported symbols and the relative path of the file to import them from (with extension)
-	GetImportData(line string) ([]string, string, error)
+	GetImportData(line string) (ImportData, error)
 	// whether a given line declares a new export for the file
 	IsExportDeclaration(line string) bool
 	// fetch a list of exported symbols for a given line, assuming it really is an export declaration
@@ -26,9 +28,14 @@ type LangService interface {
 	IsLineMacro(line string) bool
 	GetMacroType(line string) MacroType
 	GetMacroArgs(line string) []string
-	GetMacroStringDeclaration(line string) (string, string, error)
+	GetMacroStringDeclaration(line string) (name string, contents string, err error)
 
 	SubstituteDefines(line string, defines map[string]string) string
+}
+
+type ImportData struct {
+	Symbols []string
+	Path    string
 }
 
 // Compiler is the central control struct that reads input files and stitches them together into the output file
@@ -39,6 +46,9 @@ type Compiler struct {
 	fileStack            *FileStack
 	alreadyImportedFiles map[string]*SourceFile
 	defines              map[string]string
+
+	conditionStack        *stack.Stack
+	disabledNestedIfCount int
 }
 
 // NewCompiler creates a new compiler with the given parameters
@@ -57,12 +67,14 @@ func NewCompiler(
 	outputFile, _ := os.Create(outputfilename)
 
 	return &Compiler{
-		langservice,
-		outputFile,
-		directory,
-		fileStack,
-		make(map[string]*SourceFile),
-		make(map[string]string),
+		LangService:           langservice,
+		outputFile:            outputFile,
+		directory:             directory,
+		fileStack:             fileStack,
+		alreadyImportedFiles:  make(map[string]*SourceFile),
+		defines:               make(map[string]string),
+		conditionStack:        stack.NewStack(10),
+		disabledNestedIfCount: 0,
 	}
 }
 
@@ -173,15 +185,15 @@ func (c *Compiler) _processFile() error {
 }
 
 func (c *Compiler) _handleImport(line string, lineNumber int, currentFile *SourceFile) error {
-	importedSymbols, partialRequirePath, err := c.LangService.GetImportData(line)
+	importData, err := c.LangService.GetImportData(line)
 
 	if err != nil {
 		return err
 	}
 
-	currentFile.addImportedSymbols(importedSymbols)
+	currentFile.addImportedSymbols(importData.Symbols)
 
-	requirePath := path.Join(c.directory, partialRequirePath)
+	requirePath := path.Join(c.directory, importData.Path)
 
 	if c._shouldProcessNewFile(requirePath) {
 		requiredFile, err := newSourceFile(requirePath)
@@ -196,13 +208,13 @@ func (c *Compiler) _handleImport(line string, lineNumber int, currentFile *Sourc
 		}
 		poppedRequiredFile := c._popFile()
 
-		err = _validateImportExportSymbols(importedSymbols, poppedRequiredFile)
+		err = _validateImportExportSymbols(importData.Symbols, poppedRequiredFile)
 		if err != nil {
 			return fmt.Errorf("Error trying to import file '%s':\n%w", requirePath, err)
 		}
 	} else {
 		requiredFile := c._getCachedFile(requirePath)
-		err := _validateImportExportSymbols(importedSymbols, requiredFile)
+		err := _validateImportExportSymbols(importData.Symbols, requiredFile)
 		if err != nil {
 			return fmt.Errorf("Error trying to import file '%s':\n%w", requirePath, err)
 		}

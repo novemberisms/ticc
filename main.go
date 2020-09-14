@@ -9,6 +9,7 @@ import (
 
 	"github.com/novemberisms/ticc/compiler"
 	"github.com/novemberisms/ticc/moonlang"
+	"github.com/novemberisms/ticc/wrenlang"
 )
 
 func main() {
@@ -51,9 +52,14 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <-w.Event:
-				doCompilation()
-				fmt.Printf("--------------------------------------------\n")
+			case event := <-w.Event:
+				// if ticc is being run inside the watched directory itself, and the output file is being
+				// written to the same directory, then this will also pick up the output file being written
+				// and cause a loop. So we ignore the output file here
+				if event.Name() != Args.outputFile {
+					doCompilation()
+					fmt.Printf("--------------------------------------------\n")
+				}
 			case err := <-w.Error:
 				fmt.Println(err)
 			case <-w.Closed:
@@ -79,6 +85,8 @@ func doCompilation() {
 	switch Args.language {
 	case moon:
 		langService = moonlang.MoonscriptLanguageService{}
+	case wren:
+		langService = wrenlang.WrenLanguageService{}
 	default:
 		checkError(errors.New("language not yet implemented"))
 	}

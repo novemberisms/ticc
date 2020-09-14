@@ -5,6 +5,15 @@ import "errors"
 // MacroType is an enum that specifies one of the available macro types supported by the ticc code compiler
 type MacroType string
 
+type conditionalMode int
+
+const (
+	conditionalNormalExecution conditionalMode = iota
+	conditionalExecuteBlock
+	conditionalWaitForElseIf
+	conditionalWaitForEnd
+)
+
 const (
 	// MacroTypeUnknown denotes a macro with an invalid name. Detecting this should raise errors.
 	MacroTypeUnknown MacroType = "unknown"
@@ -19,19 +28,27 @@ const (
 	MacroTypeElseIf MacroType = "elseif"
 	// MacroTypeElse denotes an else block in a conditional compilation block
 	MacroTypeElse MacroType = "else"
+	// MacroTypeEndIf denotes an endif marker that terminates the conditional compilation mode
+	MacroTypeEndIf MacroType = "endif"
 )
 
 func (c *Compiler) handleMacro(macroType MacroType, line string) error {
+
+	if !c._shouldHandleMacro(macroType, line) {
+		return nil
+	}
+
 	switch macroType {
 	case MacroTypeDefine:
 		args := c.LangService.GetMacroArgs(line)
 		if len(args) == 0 {
 			return errors.New("define macro must have at least 1 argument")
-		}
-		if len(args) == 1 {
+		} else if len(args) == 1 {
 			c._newDefine(args[0], "true")
-		} else {
+		} else if len(args) == 2 {
 			c._newDefine(args[0], args[1])
+		} else {
+			return errors.New("too many arguments to define macro. did you mean to use a string macro?")
 		}
 		return nil
 	case MacroTypeString:
@@ -47,4 +64,39 @@ func (c *Compiler) handleMacro(macroType MacroType, line string) error {
 
 func (c *Compiler) _newDefine(from string, to string) {
 	c.defines[from] = to
+}
+
+func (c *Compiler) _getConditionalMode() conditionalMode {
+	if c.conditionStack.Len() == 0 {
+		return conditionalNormalExecution
+	}
+
+	return c.conditionStack.Peek().(conditionalMode)
+}
+
+func (c *Compiler) _shouldHandleMacro(macroType MacroType, line string) bool {
+
+	// if we're in a conditional block that's not supposed to be executed,
+	// only process macros if they're an ELSEIF, ELSE, or ENDIF
+	// (new IF blocks are not processed if it's within a block that should not be processed)
+	switch c._getConditionalMode() {
+	case conditionalWaitForElseIf:
+		fallthrough
+	case conditionalWaitForEnd:
+		switch macroType {
+		case MacroTypeIf:
+			c.disabledNestedIfCount++
+		case MacroTypeEndIf:
+			c.disabledNestedIfCount--
+
+		case MacroTypeElseIf:
+			fallthrough
+		case MacroTypeElse:
+
+		}
+
+		return false
+	}
+
+	return true
 }

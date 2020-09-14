@@ -19,7 +19,7 @@ var reSingleLineComment = regexp.MustCompile(`--.*`)
 
 // knowing that a line contains an import statement, extracts a string containing comma-separated import
 // symbols, as well as the relative import path to the file these symbols reside
-var reImportExtract = regexp.MustCompile(`import\s+(.+)\s+from\s+require\s+"(\w+)"`)
+var reImportExtract = regexp.MustCompile(`import\s+(.+)\s+from\s+require\s+"([\/\w]+)"`)
 
 var reRequireFile = regexp.MustCompile(`require\s*"(\w+)"`)
 
@@ -43,7 +43,7 @@ var reBreakDownMacroArgs = regexp.MustCompile(`\S+`)
 // and the second capturing group gets the string contents
 var reGetMacroStringDeclarationArgs = regexp.MustCompile(`--#\s*\w+\s+(\w+)\s+(.*)$`)
 
-var reIdentifiers = regexp.MustCompile(`[\w_]+`)
+var reIdentifiers = regexp.MustCompile(`\w+`)
 
 // StripUnimportant returns a new line which is the result of stripping all the unimportant or non-usable
 // characters from it. This includes stripping away unneeded whitespace, comments, and any text that comes after comments
@@ -61,7 +61,7 @@ func (ls MoonscriptLanguageService) IsLineImport(line string) bool {
 
 // GetImportData will extract a slice of imported symbols and the relative path to the file that is being imported given
 // a line of code with an import statement
-func (ls MoonscriptLanguageService) GetImportData(line string) ([]string, string, error) {
+func (ls MoonscriptLanguageService) GetImportData(line string) (compiler.ImportData, error) {
 
 	matchInfo := reImportExtract.FindStringSubmatch(line)
 
@@ -71,16 +71,20 @@ func (ls MoonscriptLanguageService) GetImportData(line string) ([]string, string
 
 		// check if the line is a bare require without any imports (like 'require "defines"')
 		if requiredFile := reRequireFile.FindStringSubmatch(line); len(requiredFile) > 0 {
-			return []string{}, requiredFile[1] + ".moon", nil
+			return compiler.ImportData{
+				Path: requiredFile[1] + ".moon",
+			}, nil
 		}
 
-		return nil, "", errors.New(`import line does not match the templates: 'import {symbols} from require "{importpath}"' or 'require {importpath}'`)
+		return compiler.ImportData{}, errors.New(`import line does not match the templates: 'import {symbols} from require "{importpath}"' or 'require {importpath}'`)
 	}
 
-	importSymbols := reExtractImportSymbols.FindAllString(matchInfo[1], -1)
-	requiredFilename := matchInfo[2] + ".moon"
+	importData := compiler.ImportData{
+		Symbols: reExtractImportSymbols.FindAllString(matchInfo[1], -1),
+		Path:    matchInfo[2] + ".moon",
+	}
 
-	return importSymbols, requiredFilename, nil
+	return importData, nil
 }
 
 // IsExportDeclaration determines if a line contains a global declaration that should be available to other files
@@ -182,6 +186,8 @@ func (ls MoonscriptLanguageService) GetMacroType(line string) compiler.MacroType
 		return compiler.MacroTypeElseIf
 	case "ELSE":
 		return compiler.MacroTypeElse
+	case "ENDIF":
+		return compiler.MacroTypeEndIf
 	default:
 		return compiler.MacroTypeUnknown
 	}

@@ -3,8 +3,7 @@ package compiler
 import "errors"
 
 // MacroType is an enum that specifies one of the available macro types supported by the ticc code compiler
-type MacroType string
-
+type MacroType int
 type conditionalMode int
 
 const (
@@ -16,20 +15,20 @@ const (
 
 const (
 	// MacroTypeUnknown denotes a macro with an invalid name. Detecting this should raise errors.
-	MacroTypeUnknown MacroType = "unknown"
+	MacroTypeUnknown MacroType = iota
 	// MacroTypeDefine denotes a #define macro. This is used just like in C.
-	MacroTypeDefine MacroType = "define"
+	MacroTypeDefine
 	// MacroTypeString denotes a #string macro, which is similar to a #define macro, but it takes
 	// in the contents of a string and preserves punctuation and spacing.
-	MacroTypeString MacroType = "string"
+	MacroTypeString
 	// MacroTypeIf denotes the start of a conditional compilation block
-	MacroTypeIf MacroType = "if"
+	MacroTypeIf
 	// MacroTypeElseIf denotes an else-if block in a conditional compilation block
-	MacroTypeElseIf MacroType = "elseif"
+	MacroTypeElseIf
 	// MacroTypeElse denotes an else block in a conditional compilation block
-	MacroTypeElse MacroType = "else"
+	MacroTypeElse
 	// MacroTypeEndIf denotes an endif marker that terminates the conditional compilation mode
-	MacroTypeEndIf MacroType = "endif"
+	MacroTypeEndIf
 )
 
 func (c *Compiler) handleMacro(macroType MacroType, line string) error {

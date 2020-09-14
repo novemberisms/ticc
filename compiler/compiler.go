@@ -33,6 +33,7 @@ type LangService interface {
 	SubstituteDefines(line string, defines map[string]string) string
 }
 
+// ImportData contains information about the imports for a particular file
 type ImportData struct {
 	Symbols []string
 	Path    string

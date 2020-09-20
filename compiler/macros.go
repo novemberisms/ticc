@@ -64,10 +64,8 @@ func (m MacroType) String() string {
 func (c *Compiler) handleMacro(macroType MacroType, line string) error {
 
 	if !c._shouldHandleMacro(macroType, line) {
-		fmt.Printf("skipping macro %v\n", macroType.String())
 		return nil
 	}
-	fmt.Printf("handling macro %v\n", macroType.String())
 
 	switch macroType {
 	case MacroTypeDefine:
@@ -188,10 +186,8 @@ func (c *Compiler) _handleIfMacro(line string) error {
 	}
 
 	if condition {
-		fmt.Println("conditional evaluated to true")
 		c.conditionStack.Push(conditionalExecuteBlock)
 	} else {
-		fmt.Println("conditional evaluated to false")
 		c.conditionStack.Push(conditionalWaitForElseIf)
 	}
 

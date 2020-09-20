@@ -60,7 +60,12 @@ func main() {
 				// if the output file is being written to the watched directory,
 				// then this will also pick up the output file being written
 				// and cause a loop. So we ignore the output file here
-				if event.Name() != path.Base(Args.outputFile) {
+
+				// also ignore any changes to files with a different file extension
+				// than the chosen language as it could be the output .tic file itself
+				// or possibly the sprite or sound data
+
+				if event.Name() != path.Base(Args.outputFile) && path.Ext(event.Name()) == fmt.Sprintf(".%s", Args.language) {
 					doCompilation()
 					fmt.Printf("--------------------------------------------\n")
 				}

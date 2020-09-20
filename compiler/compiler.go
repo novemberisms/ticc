@@ -58,6 +58,7 @@ func NewCompiler(
 	mainfile string,
 	outputfilename string,
 	directory string,
+	defines map[string]string,
 ) *Compiler {
 	// the main file is guaranteed to exist
 	mainSourceFile, _ := newSourceFile(mainfile)
@@ -68,12 +69,13 @@ func NewCompiler(
 	outputFile, _ := os.Create(outputfilename)
 
 	return &Compiler{
-		LangService:           langservice,
-		outputFile:            outputFile,
-		directory:             directory,
-		fileStack:             fileStack,
-		alreadyImportedFiles:  make(map[string]*SourceFile),
-		defines:               make(map[string]string),
+		LangService:          langservice,
+		outputFile:           outputFile,
+		directory:            directory,
+		fileStack:            fileStack,
+		alreadyImportedFiles: make(map[string]*SourceFile),
+		defines:              defines,
+
 		conditionStack:        stack.NewStack(10),
 		disabledNestedIfCount: 0,
 	}
@@ -149,6 +151,10 @@ func (c *Compiler) _processFile() error {
 			if err != nil {
 				return fmt.Errorf("Error processing file '%s' (line %d):\n%w", currentFile.path, lineNumber, err)
 			}
+			continue
+		}
+
+		if !c.shouldProcessLine(line) {
 			continue
 		}
 

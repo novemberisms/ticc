@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Args holds all the optional arguments in the form of flags
@@ -14,6 +15,7 @@ var Args struct {
 	directory  os.FileInfo
 	positional []string
 	outputFile string
+	defines    map[string]string
 	watchMode  bool
 }
 
@@ -24,6 +26,7 @@ func getArguments() {
 	dirFlag := flag.String("d", ".", "The directory containing the main file and the subfiles")
 	outFlag := flag.String("o", "out", "The output file (sans extension)")
 	watchFlag := flag.Bool("w", false, "Whether to enable Watch mode, which automatically recompiles if a file has changed in the directory")
+	definesFlag := flag.String("D", "", "Used to pass in defines before compiling. Format is -D \"var1=value;var2=value;var3=value\"")
 
 	// begin parsing the flags
 	flag.Parse()
@@ -33,6 +36,7 @@ func getArguments() {
 	_setDir(*dirFlag)
 	_setLanguage(*langFlag)
 	_setOutputFile(*outFlag)
+	_setDefines(*definesFlag)
 
 	Args.watchMode = *watchFlag
 
@@ -87,6 +91,30 @@ func _setOutputFile(filename string) {
 	// check to see if the output file already exists, and if so, delete it
 	_deleteIfExists(filename)
 	Args.outputFile = filename
+}
+
+func _setDefines(input string) {
+	Args.defines = make(map[string]string)
+
+	if len(input) == 0 {
+		return
+	}
+
+	for _, define := range strings.Split(input, ";") {
+		expressions := strings.Split(define, "=")
+
+		lhs := strings.TrimSpace(expressions[0])
+
+		var rhs string
+
+		if len(expressions) == 1 {
+			rhs = "true"
+		} else {
+			rhs = strings.TrimSpace(expressions[1])
+		}
+
+		Args.defines[lhs] = rhs
+	}
 }
 
 func _deleteIfExists(filename string) {

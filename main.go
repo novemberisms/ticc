@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/radovskyb/watcher"
@@ -26,6 +27,9 @@ func main() {
 	fmt.Printf("language: %s\n", Args.language)
 	fmt.Printf("dir: %s\n", Args.directory.Name())
 	fmt.Printf("out: %s\n", Args.outputFile)
+	for k, v := range Args.defines {
+		fmt.Printf("define: %s = %v\n", k, v)
+	}
 	fmt.Printf("============================================\n")
 
 	doCompilation()
@@ -53,10 +57,10 @@ func main() {
 		for {
 			select {
 			case event := <-w.Event:
-				// if ticc is being run inside the watched directory itself, and the output file is being
-				// written to the same directory, then this will also pick up the output file being written
+				// if the output file is being written to the watched directory,
+				// then this will also pick up the output file being written
 				// and cause a loop. So we ignore the output file here
-				if event.Name() != Args.outputFile {
+				if event.Name() != path.Base(Args.outputFile) {
 					doCompilation()
 					fmt.Printf("--------------------------------------------\n")
 				}
@@ -97,6 +101,7 @@ func doCompilation() {
 		mainFile,
 		Args.outputFile,
 		Args.directory.Name(),
+		Args.defines,
 	)
 
 	fmt.Println("Compiling...")
